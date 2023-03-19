@@ -8,10 +8,10 @@ import json
 import cv2
 
 
-DATA_PATH = "data/dancetrack"
+DATA_PATH = "/home/share/datasets/dancetrack"
 OUT_PATH = os.path.join(DATA_PATH, "annotations")
-# SPLITS = ['train', 'val', 'test']
-SPLITS = ["train", "val", "test"]
+# SPLITS = ["train", "val", "test"]
+SPLITS = ['val']
 
 if __name__ == "__main__":
 

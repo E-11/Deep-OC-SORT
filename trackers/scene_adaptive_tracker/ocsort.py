@@ -419,13 +419,15 @@ class OCSort(object):
         # From [self.alpha_fixed_emb, 1], goes to 1 as detector is less confident
         dets_alpha = af + (1 - af) * (1 - trust)
 
-        # get predicted locations from existing trackers.
+        # get predicted locations and track_length from existing trackers.
         trks = np.zeros((len(self.trackers), 5))
+        trks_ls = []  ## track_length, track_state
         trk_embs = []
         to_del = []
         ret = []
         for t, trk in enumerate(trks):
             pos = self.trackers[t].predict()[0]
+            trks_ls.append([self.trackers[t].age, self.trackers[t].frozen])  ## track_length, track_state
             trk[:] = [pos[0], pos[1], pos[2], pos[3], 0]
             if np.any(np.isnan(pos)):
                 to_del.append(t)
@@ -447,6 +449,7 @@ class OCSort(object):
         matched, unmatched_dets, unmatched_trks = associate(
             dets,
             trks,
+            trks_ls,
             dets_embs,
             trk_embs,
             self.iou_threshold,

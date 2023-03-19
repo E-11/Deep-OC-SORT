@@ -1,0 +1,10 @@
+__pycache__/dataset.cpython-37.pyc
+__pycache__
+results/
+cache/
+external/YOLOX/build/
+external/YOLOX/yolox.egg-info/
+external/deep-person-reid/torchreid.egg-info/
+external/deep-person-reid/build/
+external/YOLOX/yolox/layers/fast_cocoeval.cpython-37m-x86_64-linux-gnu.so
+external/deep-person-reid/torchreid/metrics/rank_cylib/rank_cy.cpython-37m-x86_64-linux-gnu.so

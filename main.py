@@ -10,7 +10,8 @@ import numpy as np
 import dataset
 import utils
 from external.adaptors import detector
-from trackers import integrated_ocsort_embedding as tracker_module
+# from trackers import integrated_ocsort_embedding as tracker_module
+from trackers import scene_adaptive_tracker as tracker_module
 
 
 def get_main_args():
@@ -42,7 +43,7 @@ def get_main_args():
     parser.add_argument("--cmc_off", action="store_true")
     parser.add_argument("--aw_off", action="store_true")
     parser.add_argument("--aw_param", type=float, default=0.5)
-    parser.add_argument("--new_kf_off", action="store_true")
+    parser.add_argument("--new_kf_off", action="store_true")   ## BoT-SORT
     parser.add_argument("--grid_off", action="store_true")
     args = parser.parse_args()
 
@@ -62,28 +63,29 @@ def main():
     # Set dataset and detector
     args = get_main_args()
 
+    model_path = "/home/share/model/DeepOC-SORT/"
     if args.dataset == "mot17":
         if args.test_dataset:
-            detector_path = "external/weights/bytetrack_x_mot17.pth.tar"
+            detector_path = os.path.join(model_path, "bytetrack_x_mot17.pth.tar")
         else:
-            detector_path = "external/weights/bytetrack_ablation.pth.tar"
+            detector_path = os.path.join(model_path, "bytetrack_ablation.pth.tar")
         size = (800, 1440)
     elif args.dataset == "mot20":
         if args.test_dataset:
-            detector_path = "external/weights/bytetrack_x_mot20.tar"
+            detector_path = os.path.join(model_path, "bytetrack_x_mot20.tar")
             size = (896, 1600)
         else:
             # Just use the mot17 test model as the ablation model for 20
-            detector_path = "external/weights/bytetrack_x_mot17.pth.tar"
+            detector_path = os.path.join(model_path, "bytetrack_x_mot17.pth.tar")
             size = (800, 1440)
     elif args.dataset == "dance":
         # Same model for test and validation
-        detector_path = "external/weights/bytetrack_dance_model.pth.tar"
+        detector_path = os.path.join(model_path, "bytetrack_dance_model.pth.tar")
         size = (800, 1440)
     else:
         raise RuntimeError("Need to update paths for detector for extra datasets.")
     det = detector.Detector("yolox", detector_path, args.dataset)
-    loader = dataset.get_mot_loader(args.dataset, args.test_dataset, size=size)
+    loader = dataset.get_mot_loader(args.dataset, args.test_dataset, data_dir="/home/share/datasets", size=size)
 
     # Set up tracker
     oc_sort_args = dict(

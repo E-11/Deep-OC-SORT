@@ -5,7 +5,7 @@ import cv2
 
 
 # Use the same script for MOT16
-DATA_PATH = "datasets/mot"
+DATA_PATH = "/home/share/datasets/mot"
 OUT_PATH = os.path.join(DATA_PATH, "annotations")
 SPLITS = [
     "train_half",
