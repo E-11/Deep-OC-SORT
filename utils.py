@@ -16,7 +16,7 @@ def write_results_no_score(filename, results):
                 x1, y1, w, h = tlwh
                 line = save_format.format(
                     frame=frame_id,
-                    id=track_id,
+                    id=int(track_id),
                     x1=round(x1, 1),
                     y1=round(y1, 1),
                     w=round(w, 1),

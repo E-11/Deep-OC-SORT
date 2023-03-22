@@ -315,6 +315,7 @@ def compute_scene_adaptive_weight(detections, tracks_ls):
     row, col = np.diag_indices_from(det_iou_matrix)
     det_iou_matrix[row, col] = 0
     det_iou_weight = np.expand_dims(np.max(det_iou_matrix, axis=0), axis=1)  ## N×1
+    # det_iou_weight[np.where(det_iou_weight>0.7)] = 1
     det_iou_weight = det_iou_weight.repeat(M, axis=1)  ## N×M
 
     ## w_length
@@ -329,7 +330,8 @@ def compute_scene_adaptive_weight(detections, tracks_ls):
     idx = np.where(w_length==0)
     w_length[idx] = -det_iou_weight[idx]
 
-    w_sa = (w_length + det_iou_weight) / 2
+    # w_sa = (w_length + det_iou_weight) / 2
+    w_sa = det_iou_weight
     return w_sa
 
 
@@ -397,8 +399,9 @@ def associate(
             if not aw_off:
                 w_matrix = compute_aw_new_metric(emb_cost, w_assoc_emb, aw_param)
                 emb_cost *= w_matrix
-                w_sa = compute_scene_adaptive_weight(detections, tracks_len_state)
-                iou_emb_cost = w_sa * iou_matrix + (1 - w_sa) * emb_cost
+                iou_emb_cost = iou_matrix + emb_cost
+                # w_sa = compute_scene_adaptive_weight(detections, tracks_len_state)
+                # iou_emb_cost = w_sa * iou_matrix + (1 - w_sa) * emb_cost
             else:
                 emb_cost *= w_assoc_emb
                 iou_emb_cost = iou_matrix + emb_cost
