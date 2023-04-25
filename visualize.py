@@ -8,7 +8,7 @@ dataset = "MOT17"
 mode = "val"  # train; test; val
 DATA_PATH = "/home/share/datasets/mot"
 
-OUTPUT_PATH = os.path.join("/home/share/exp_result/mggan_motion/visualize", dataset, exp_name)
+OUTPUT_PATH = os.path.join("/home/share/exp_result/mggan_motion/", exp_name, "visualize", dataset)
 # RESULT_PATH = os.path.join("/home/Deep-OC-SORT/results/trackers/", f"{dataset}-{mode}", exp_name, "data")
 RESULT_PATH = "/home/OC_SORT/YOLOX_outputs/yolox_x_mot17_ablation_half_train/track_results/"
 
