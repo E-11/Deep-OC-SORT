@@ -3,13 +3,14 @@ import os
 import json
 
 
-exp_name = "best_paper_ablations"
+exp_name = "mggan_17half_wo_img"
 dataset = "MOT17"
 mode = "val"  # train; test; val
 DATA_PATH = "/home/share/datasets/mot"
 
-OUTPUT_PATH = os.path.join("/home/share/exp_result/DeepOCSORT/visualize", dataset, exp_name)
-RESULT_PATH = os.path.join("/home/Deep-OC-SORT/results/trackers/", f"{dataset}-{mode}", exp_name, "data")
+OUTPUT_PATH = os.path.join("/home/share/exp_result/mggan_motion/visualize", dataset, exp_name)
+# RESULT_PATH = os.path.join("/home/Deep-OC-SORT/results/trackers/", f"{dataset}-{mode}", exp_name, "data")
+RESULT_PATH = "/home/OC_SORT/YOLOX_outputs/yolox_x_mot17_ablation_half_train/track_results/"
 
 gen_video = True
 bbox_type = 'tlwh'  # tlwh; xyxy; cx_cy_wh

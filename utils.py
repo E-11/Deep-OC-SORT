@@ -2,7 +2,24 @@ import glob
 import os
 
 import numpy as np
+import torch
 import shutil
+
+
+def xyxy2ltwh(bboxes):
+    # bboxes: (det_num, 4)
+    bboxes_ltwh = bboxes.copy()
+    bboxes_ltwh[:, 2] = bboxes_ltwh[:, 2] - bboxes_ltwh[:, 0]
+    bboxes_ltwh[:, 3] = bboxes_ltwh[:, 3] - bboxes_ltwh[:, 1]
+    return bboxes_ltwh
+
+
+def ltwh2xyxy(bboxes):
+    # bboxes: (det_num, 4)
+    bboxes_xyxy = bboxes.copy()
+    bboxes_xyxy[:, 3] = bboxes_xyxy[:, 1] + bboxes_xyxy[:, 3]
+    bboxes_xyxy[:, 2] = bboxes_xyxy[:, 0] + bboxes_xyxy[:, 2]
+    return bboxes_xyxy
 
 
 def write_results_no_score(filename, results):

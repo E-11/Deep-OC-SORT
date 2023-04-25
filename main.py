@@ -10,9 +10,15 @@ import numpy as np
 import dataset
 import utils
 from external.adaptors import detector
-# from trackers import integrated_ocsort_embedding as tracker_module
-from trackers import scene_adaptive_tracker as tracker_module
 
+# from trackers import integrated_ocsort_embedding as tracker_module
+# from trackers.integrated_ocsort_embedding.ocsort import OCSort as Tracker
+
+# from trackers import scene_adaptive_tracker as tracker_module
+# from trackers.scene_adaptive_tracker.ocsort import OCSort as Tracker
+
+from trackers import ArTIST_tracker as tracker_module
+from trackers.ArTIST_tracker.artist import ArTIST as Tracker
 
 def get_main_args():
     parser = tracker_module.args.make_parser()
@@ -64,7 +70,7 @@ def main():
     args = get_main_args()
 
     model_path = "/home/share/model/DeepOC-SORT/"
-    if args.dataset == "mot17":
+    if args.dataset == "mot17" or args.dataset == "mot17_mini":
         if args.test_dataset:
             detector_path = os.path.join(model_path, "bytetrack_x_mot17.pth.tar")
         else:
@@ -104,7 +110,7 @@ def main():
         new_kf_off=args.new_kf_off,
         grid_off=args.grid_off,
     )
-    tracker = tracker_module.ocsort.OCSort(**oc_sort_args)
+    tracker = Tracker(**oc_sort_args)
     results = {}
     frame_count = 0
     total_time = 0
@@ -129,7 +135,7 @@ def main():
             print(f"Initializing tracker for {video_name}")
             print(f"Time spent: {total_time:.3f}, FPS {frame_count / (total_time + 1e-9):.2f}")
             tracker.dump_cache()
-            tracker = tracker_module.ocsort.OCSort(**oc_sort_args)
+            tracker = Tracker(**oc_sort_args)
 
         start_time = time.time()
 

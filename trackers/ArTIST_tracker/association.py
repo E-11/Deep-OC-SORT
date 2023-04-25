@@ -1,0 +1,309 @@
+import numpy as np
+import scipy.spatial as sp
+from scipy.optimize import linear_sum_assignment
+
+
+def iou_batch(bboxes1, bboxes2):
+    """
+    From SORT: Computes IOU between two bboxes in the form [x1,y1,x2,y2]
+    """
+    bboxes2 = np.expand_dims(bboxes2, 0)  ## (1, M, 5)
+    bboxes1 = np.expand_dims(bboxes1, 1)  ## (N, 1, 5)
+
+    ## coordinates of overlapping area
+    xx1 = np.maximum(bboxes1[..., 0], bboxes2[..., 0])
+    yy1 = np.maximum(bboxes1[..., 1], bboxes2[..., 1])
+    xx2 = np.minimum(bboxes1[..., 2], bboxes2[..., 2])
+    yy2 = np.minimum(bboxes1[..., 3], bboxes2[..., 3])
+    w = np.maximum(0.0, xx2 - xx1)
+    h = np.maximum(0.0, yy2 - yy1)
+    wh = w * h
+    o = wh / (
+        (bboxes1[..., 2] - bboxes1[..., 0]) * (bboxes1[..., 3] - bboxes1[..., 1])
+        + (bboxes2[..., 2] - bboxes2[..., 0]) * (bboxes2[..., 3] - bboxes2[..., 1])
+        - wh
+    )  ## (N, M)
+    return o
+
+
+def giou_batch(bboxes1, bboxes2):
+    """
+    :param bbox_p: predict of bbox(N,4)(x1,y1,x2,y2)
+    :param bbox_g: groundtruth of bbox(N,4)(x1,y1,x2,y2)
+    :return:
+    """
+    # for details should go to https://arxiv.org/pdf/1902.09630.pdf
+    # ensure predict's bbox form
+    bboxes2 = np.expand_dims(bboxes2, 0)
+    bboxes1 = np.expand_dims(bboxes1, 1)
+
+    xx1 = np.maximum(bboxes1[..., 0], bboxes2[..., 0])
+    yy1 = np.maximum(bboxes1[..., 1], bboxes2[..., 1])
+    xx2 = np.minimum(bboxes1[..., 2], bboxes2[..., 2])
+    yy2 = np.minimum(bboxes1[..., 3], bboxes2[..., 3])
+    w = np.maximum(0.0, xx2 - xx1)
+    h = np.maximum(0.0, yy2 - yy1)
+    wh = w * h
+    iou = wh / (
+        (bboxes1[..., 2] - bboxes1[..., 0]) * (bboxes1[..., 3] - bboxes1[..., 1])
+        + (bboxes2[..., 2] - bboxes2[..., 0]) * (bboxes2[..., 3] - bboxes2[..., 1])
+        - wh
+    )
+
+    xxc1 = np.minimum(bboxes1[..., 0], bboxes2[..., 0])
+    yyc1 = np.minimum(bboxes1[..., 1], bboxes2[..., 1])
+    xxc2 = np.maximum(bboxes1[..., 2], bboxes2[..., 2])
+    yyc2 = np.maximum(bboxes1[..., 3], bboxes2[..., 3])
+    wc = xxc2 - xxc1
+    hc = yyc2 - yyc1
+    assert (wc > 0).all() and (hc > 0).all()
+    area_enclose = wc * hc
+    giou = iou - (area_enclose - wh) / area_enclose
+    giou = (giou + 1.0) / 2.0  # resize from (-1,1) to (0,1)
+    return giou
+
+
+def diou_batch(bboxes1, bboxes2):
+    """
+    :param bbox_p: predict of bbox(N,4)(x1,y1,x2,y2)
+    :param bbox_g: groundtruth of bbox(N,4)(x1,y1,x2,y2)
+    :return:
+    """
+    # for details should go to https://arxiv.org/pdf/1902.09630.pdf
+    # ensure predict's bbox form
+    bboxes2 = np.expand_dims(bboxes2, 0)
+    bboxes1 = np.expand_dims(bboxes1, 1)
+
+    # calculate the intersection box
+    xx1 = np.maximum(bboxes1[..., 0], bboxes2[..., 0])
+    yy1 = np.maximum(bboxes1[..., 1], bboxes2[..., 1])
+    xx2 = np.minimum(bboxes1[..., 2], bboxes2[..., 2])
+    yy2 = np.minimum(bboxes1[..., 3], bboxes2[..., 3])
+    w = np.maximum(0.0, xx2 - xx1)
+    h = np.maximum(0.0, yy2 - yy1)
+    wh = w * h
+    iou = wh / (
+        (bboxes1[..., 2] - bboxes1[..., 0]) * (bboxes1[..., 3] - bboxes1[..., 1])
+        + (bboxes2[..., 2] - bboxes2[..., 0]) * (bboxes2[..., 3] - bboxes2[..., 1])
+        - wh
+    )
+
+    centerx1 = (bboxes1[..., 0] + bboxes1[..., 2]) / 2.0
+    centery1 = (bboxes1[..., 1] + bboxes1[..., 3]) / 2.0
+    centerx2 = (bboxes2[..., 0] + bboxes2[..., 2]) / 2.0
+    centery2 = (bboxes2[..., 1] + bboxes2[..., 3]) / 2.0
+
+    inner_diag = (centerx1 - centerx2) ** 2 + (centery1 - centery2) ** 2
+
+    xxc1 = np.minimum(bboxes1[..., 0], bboxes2[..., 0])
+    yyc1 = np.minimum(bboxes1[..., 1], bboxes2[..., 1])
+    xxc2 = np.maximum(bboxes1[..., 2], bboxes2[..., 2])
+    yyc2 = np.maximum(bboxes1[..., 3], bboxes2[..., 3])
+
+    outer_diag = (xxc2 - xxc1) ** 2 + (yyc2 - yyc1) ** 2
+    diou = iou - inner_diag / outer_diag
+
+    return (diou + 1) / 2.0  # resize from (-1,1) to (0,1)
+
+
+def ciou_batch(bboxes1, bboxes2):
+    """
+    :param bbox_p: predict of bbox(N,4)(x1,y1,x2,y2)
+    :param bbox_g: groundtruth of bbox(N,4)(x1,y1,x2,y2)
+    :return:
+    """
+    # for details should go to https://arxiv.org/pdf/1902.09630.pdf
+    # ensure predict's bbox form
+    bboxes2 = np.expand_dims(bboxes2, 0)
+    bboxes1 = np.expand_dims(bboxes1, 1)
+
+    # calculate the intersection box
+    xx1 = np.maximum(bboxes1[..., 0], bboxes2[..., 0])
+    yy1 = np.maximum(bboxes1[..., 1], bboxes2[..., 1])
+    xx2 = np.minimum(bboxes1[..., 2], bboxes2[..., 2])
+    yy2 = np.minimum(bboxes1[..., 3], bboxes2[..., 3])
+    w = np.maximum(0.0, xx2 - xx1)
+    h = np.maximum(0.0, yy2 - yy1)
+    wh = w * h
+    iou = wh / (
+        (bboxes1[..., 2] - bboxes1[..., 0]) * (bboxes1[..., 3] - bboxes1[..., 1])
+        + (bboxes2[..., 2] - bboxes2[..., 0]) * (bboxes2[..., 3] - bboxes2[..., 1])
+        - wh
+    )
+
+    centerx1 = (bboxes1[..., 0] + bboxes1[..., 2]) / 2.0
+    centery1 = (bboxes1[..., 1] + bboxes1[..., 3]) / 2.0
+    centerx2 = (bboxes2[..., 0] + bboxes2[..., 2]) / 2.0
+    centery2 = (bboxes2[..., 1] + bboxes2[..., 3]) / 2.0
+
+    inner_diag = (centerx1 - centerx2) ** 2 + (centery1 - centery2) ** 2
+
+    xxc1 = np.minimum(bboxes1[..., 0], bboxes2[..., 0])
+    yyc1 = np.minimum(bboxes1[..., 1], bboxes2[..., 1])
+    xxc2 = np.maximum(bboxes1[..., 2], bboxes2[..., 2])
+    yyc2 = np.maximum(bboxes1[..., 3], bboxes2[..., 3])
+
+    outer_diag = (xxc2 - xxc1) ** 2 + (yyc2 - yyc1) ** 2
+
+    w1 = bboxes1[..., 2] - bboxes1[..., 0]
+    h1 = bboxes1[..., 3] - bboxes1[..., 1]
+    w2 = bboxes2[..., 2] - bboxes2[..., 0]
+    h2 = bboxes2[..., 3] - bboxes2[..., 1]
+
+    # prevent dividing over zero. add one pixel shift
+    h2 = h2 + 1.0
+    h1 = h1 + 1.0
+    arctan = np.arctan(w2 / h2) - np.arctan(w1 / h1)
+    v = (4 / (np.pi**2)) * (arctan**2)
+    S = 1 - iou
+    alpha = v / (S + v)
+    ciou = iou - inner_diag / outer_diag - alpha * v
+
+    return (ciou + 1) / 2.0  # resize from (-1,1) to (0,1)
+
+
+def ct_dist(bboxes1, bboxes2):
+    """
+    Measure the center distance between two sets of bounding boxes,
+    this is a coarse implementation, we don't recommend using it only
+    for association, which can be unstable and sensitive to frame rate
+    and object speed.
+    """
+    bboxes2 = np.expand_dims(bboxes2, 0)
+    bboxes1 = np.expand_dims(bboxes1, 1)
+
+    centerx1 = (bboxes1[..., 0] + bboxes1[..., 2]) / 2.0
+    centery1 = (bboxes1[..., 1] + bboxes1[..., 3]) / 2.0
+    centerx2 = (bboxes2[..., 0] + bboxes2[..., 2]) / 2.0
+    centery2 = (bboxes2[..., 1] + bboxes2[..., 3]) / 2.0
+
+    ct_dist2 = (centerx1 - centerx2) ** 2 + (centery1 - centery2) ** 2
+
+    ct_dist = np.sqrt(ct_dist2)
+
+    # The linear rescaling is a naive version and needs more study
+    ct_dist = ct_dist / ct_dist.max()
+    return ct_dist.max() - ct_dist  # resize to (0,1)
+
+
+def linear_assignment(cost_matrix):
+    try:
+        import lap
+
+        _, x, y = lap.lapjv(cost_matrix, extend_cost=True)
+        return np.array([[y[i], i] for i in x if i >= 0])  #
+    except ImportError:
+        from scipy.optimize import linear_sum_assignment
+
+        x, y = linear_sum_assignment(cost_matrix)
+        return np.array(list(zip(x, y)))
+
+
+def Munkres(cost_matrix, detection_idx, tracklet_idx):
+    cost_seq = cost_matrix[tracklet_idx, :][:, detection_idx].cpu().numpy()
+    row_ind, col_ind = linear_sum_assignment(-cost_seq)
+    assigned_T_idx = []
+    assigned_D_idx = []
+    for idx_T in row_ind:
+        assigned_T_idx.append(tracklet_idx[idx_T])
+    for idx_D in col_ind:
+        assigned_D_idx.append(detection_idx[idx_D])
+
+    uT = np.delete(tracklet_idx, row_ind)
+    uD = np.delete(detection_idx, col_ind)
+
+    assignment = list(zip(assigned_T_idx, assigned_D_idx))
+
+    return assignment, uD, uT
+
+
+def associate_detections_to_trackers(detections, trackers, iou_threshold=0.3):
+    """
+    Assigns detections to tracked object (both represented as bounding boxes)
+    Returns 3 lists of matches, unmatched_detections and unmatched_trackers
+    """
+    if len(trackers) == 0:
+        return (
+            np.empty((0, 2), dtype=int),
+            np.arange(len(detections)),
+            np.empty((0, 5), dtype=int),
+        )
+
+    iou_matrix = iou_batch(detections, trackers)
+
+    if min(iou_matrix.shape) > 0:
+        a = (iou_matrix > iou_threshold).astype(np.int32)
+        if a.sum(1).max() == 1 and a.sum(0).max() == 1:
+            matched_indices = np.stack(np.where(a), axis=1)
+        else:
+            matched_indices = linear_assignment(-iou_matrix)
+    else:
+        matched_indices = np.empty(shape=(0, 2))
+
+    unmatched_detections = []
+    for d, det in enumerate(detections):
+        if d not in matched_indices[:, 0]:
+            unmatched_detections.append(d)
+    unmatched_trackers = []
+    for t, trk in enumerate(trackers):
+        if t not in matched_indices[:, 1]:
+            unmatched_trackers.append(t)
+
+    # filter out matched with low IOU
+    matches = []
+    for m in matched_indices:
+        if iou_matrix[m[0], m[1]] < iou_threshold:
+            unmatched_detections.append(m[0])
+            unmatched_trackers.append(m[1])
+        else:
+            matches.append(m.reshape(1, 2))
+    if len(matches) == 0:
+        matches = np.empty((0, 2), dtype=int)
+    else:
+        matches = np.concatenate(matches, axis=0)
+
+    return matches, np.array(unmatched_detections), np.array(unmatched_trackers)
+
+
+def compute_aw_new_metric(emb_cost, w_association_emb, max_diff=0.5):
+    w_emb = np.full_like(emb_cost, w_association_emb)
+    w_emb_bonus = np.full_like(emb_cost, 0)
+
+    # Needs two columns at least to make sense to boost
+    if emb_cost.shape[1] >= 2:
+        # Across all rows
+        for idx in range(emb_cost.shape[0]):
+            inds = np.argsort(-emb_cost[idx])
+            # Row weight is difference between top / second top
+            row_weight = min(emb_cost[idx, inds[0]] - emb_cost[idx, inds[1]], max_diff)
+            # Add to row
+            w_emb_bonus[idx] += row_weight / 2
+
+    if emb_cost.shape[0] >= 2:
+        for idj in range(emb_cost.shape[1]):
+            inds = np.argsort(-emb_cost[:, idj])
+            col_weight = min(emb_cost[inds[0], idj] - emb_cost[inds[1], idj], max_diff)
+            w_emb_bonus[:, idj] += col_weight / 2
+
+    return w_emb + w_emb_bonus
+
+
+def split_cosine_dist(dets, trks, affinity_thresh=0.55, pair_diff_thresh=0.6, hard_thresh=True):
+
+    cos_dist = np.zeros((len(dets), len(trks)))  ## N×M
+
+    for i in range(len(dets)):
+        for j in range(len(trks)):
+
+            cos_d = 1 - sp.distance.cdist(dets[i], trks[j], "cosine")  ## shape = 3x3, cosine similarity
+            patch_affinity = np.max(cos_d, axis=0)  ## shape = [3,]
+            # exp16 - Using Hard threshold
+            if hard_thresh:
+                if len(np.where(patch_affinity > affinity_thresh)[0]) != len(patch_affinity):
+                    cos_dist[i, j] = 0
+                else:
+                    cos_dist[i, j] = np.max(patch_affinity)
+            else:
+                cos_dist[i, j] = np.max(patch_affinity)  # can experiment with mean too (max works slightly better)
+
+    return cos_dist
