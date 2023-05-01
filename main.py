@@ -69,7 +69,7 @@ def main():
     # Set dataset and detector
     args = get_main_args()
 
-    model_path = "/home/share/model/DeepOC-SORT/"
+    model_path = "/home/share/dl_warehouse/model/DeepOC-SORT/"
     if args.dataset == "mot17" or args.dataset == "mot17_mini":
         if args.test_dataset:
             detector_path = os.path.join(model_path, "bytetrack_x_mot17.pth.tar")
