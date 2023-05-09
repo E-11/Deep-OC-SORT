@@ -91,7 +91,7 @@ def main():
     else:
         raise RuntimeError("Need to update paths for detector for extra datasets.")
     det = detector.Detector("yolox", detector_path, args.dataset)
-    loader = dataset.get_mot_loader(args.dataset, args.test_dataset, data_dir="/home/share/datasets", size=size)
+    loader = dataset.get_mot_loader(args.dataset, args.test_dataset, data_dir="/home/share/workspace/datasets", size=size)
 
     # Set up tracker
     oc_sort_args = dict(
